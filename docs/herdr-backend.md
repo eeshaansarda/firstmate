@@ -273,6 +273,8 @@ There is still one watcher process; the event reader is a bounded child of that 
 
 `tests/fm-backend-herdr-eventwait-smoke.test.sh`, `tests/fm-transition-lib.test.sh`, and `tests/fm-supervision-events.test.sh` cover capability, subscribe-then-reconcile ordering, dedupe, exemptions, and polling fallback.
 
+Before a fresh `blocked` edge escalates, the watcher tries one narrow, pattern-matched auto-resolve for Claude Code's usage-limit dialog; `.agents/skills/stuck-crewmate-recovery` ("Usage-limit dialog auto-resolve") is the one owner of that mechanism's contract.
+
 ## Away-mode supervisor support
 
 The away daemon supports tmux and Herdr supervisor panes only.

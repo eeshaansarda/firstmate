@@ -135,6 +135,16 @@ handle_push_transition() {  # <backend> <session> <record>
     fm_backend_commit_transition "$backend" "$STATE" "$session" "$record" || exit 1
     return
   fi
+  # Narrow first action on a fresh `blocked` edge: try the one exact,
+  # pattern-matched auto-resolve case (fm_backend_autoresolve_blocked_dialog)
+  # before ever escalating. A match sends the single safe keypress and
+  # suppresses this wake entirely; any non-match or ambiguity falls through to
+  # the escalation below unchanged.
+  if [ "$to" = blocked ] && fm_backend_autoresolve_blocked_dialog "$backend" "$window"; then
+    triage_log "auto-resolved push $to (usage-limit dialog, sent the safe keypress): $window"
+    fm_backend_commit_transition "$backend" "$STATE" "$session" "$record" || exit 1
+    return
+  fi
   reason="stale: $window (herdr: agent $to - waiting on human, escalated immediately, not via wedge timer)"
   fm_wake_append stale "$window" "$reason" || exit 1
   fm_backend_commit_transition "$backend" "$STATE" "$session" "$record" || exit 1

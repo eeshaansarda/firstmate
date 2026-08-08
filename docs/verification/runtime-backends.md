@@ -575,6 +575,29 @@ ok - real herdr: an agent that does not stop fails closed instead of being repor
 The registry read through `herdr pane report-agent` is the same source `fm_backend_herdr_agent_state` classifies, so registering and not registering an agent on a plain shell pane exercises exactly the gate every lifecycle verb depends on, with no real agent launched.
 That command is the guard that refreshes this record; run it after every Herdr upgrade rather than trusting the version above.
 
+### Usage-limit dialog auto-resolve
+
+A real Claude Code usage-limit hit cannot be triggered on demand, so this verifies the mechanism - real `herdr pane read`, the detection function, and real `herdr pane send-keys` - against a real herdr server, never a real Claude Code process. A plain script prints the exact captured dialog text and blocks on one real keypress from its own foreground tty, standing in for the interactive CLI actually waiting on that same keypress.
+
+Verified on 2026-08-08 with Herdr 0.8.0:
+
+```sh
+FM_HERDR_USAGE_LIMIT_AUTORESOLVE_E2E=1 \
+  tests/fm-herdr-usage-limit-autoresolve-live-e2e.test.sh
+```
+
+Observed output:
+
+```text
+ok - real herdr (herdr 0.8.0): drove a real idle->blocked transition on the match pane
+ok - real herdr (herdr 0.8.0): handle_push_transition read the real dialog text, sent a real Enter keystroke that the real pane process observed, and never fired the wake
+ok - real herdr (herdr 0.8.0): handle_push_transition never sends a keystroke when 'Ask your admin' is selected, and the ordinary wake still fires
+```
+
+The portable regression (no real herdr) is `tests/fm-backend-herdr.test.sh`'s `test_usage_limit_dialog_*`, `test_autoresolve_*`, and `test_handle_push_transition_*` cases, including the divergence assertion that an admin-selected or otherwise non-matching capture still fires the ordinary wake unchanged.
+
+Not verified live: whether this same dialog can render under tmux, zellij, orca, or cmux. Those backends implement no native blocked-transition push at all (`fm_backend_has_push` is herdr-only), so there is no equivalent classification decision point to intercept for them today; any occurrence would fall through to the pre-existing, unmodified generic stale/wedge-timer path exactly like any other wedge. This is a static-code-review finding, not a live reproduction on those backends.
+
 ### Away-mode transport
 
 The Pi/Herdr return and injection path was reverified on Herdr 0.7.3 and Pi 0.80.7:

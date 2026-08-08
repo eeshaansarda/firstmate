@@ -979,3 +979,21 @@ fm_backend_clear_transition() {  # <backend> <state_dir> <window>
     *) return 0 ;;
   esac
 }
+
+# fm_backend_autoresolve_blocked_dialog: narrow first-action hook run before a
+# fresh `blocked` push transition escalates to a stale wake
+# (bin/fm-push-transition-lib.sh's handle_push_transition). Only herdr
+# implements a real check today (fm_backend_herdr_autoresolve_usage_limit_dialog,
+# gated to one exact dialog signature - stuck-crewmate-recovery "Usage-limit
+# dialog auto-resolve" is the one owner of the mechanism's contract). Every
+# other backend returns 1 (no match, no action) unconditionally, so this can
+# never change blocked-wake behavior for any backend or cause other than that
+# one narrow, pattern-matched case.
+fm_backend_autoresolve_blocked_dialog() {  # <backend> <target>
+  local backend=$1 target=$2
+  fm_backend_source "$backend" || return 1
+  case "$backend" in
+    herdr) fm_backend_herdr_autoresolve_usage_limit_dialog "$target" ;;
+    *) return 1 ;;
+  esac
+}

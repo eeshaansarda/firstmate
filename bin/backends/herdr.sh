@@ -3175,6 +3175,75 @@ fm_backend_herdr_clear_transition() {  # <state_dir> <window>
   rm -f "$marker" 2>/dev/null || true
 }
 
+# --- usage-limit dialog auto-resolve -----------------------------------------
+#
+# Narrow, pattern-matched handling for exactly ONE `blocked` cause: Claude
+# Code's interactive usage-limit dialog (docs/verification/runtime-backends.md
+# "Usage-limit dialog auto-resolve", .agents/skills/stuck-crewmate-recovery
+# "Usage-limit dialog auto-resolve" - the one owner of this mechanism's
+# contract). Observed verbatim via `herdr pane read`:
+#
+#   What do you want to do?
+#
+#   ❯ 1. Stop and wait for limit to reset
+#     2. Ask your admin for more usage
+#
+#   Enter to confirm · Esc to cancel
+#
+# This is deliberately NOT part of agent-state classification -
+# fm_backend_herdr_classify_agent_status and fm_backend_herdr_pane_agent_state
+# are untouched, and a herdr `blocked` pane means exactly what it always meant.
+# The caller (bin/fm-push-transition-lib.sh's handle_push_transition, via
+# fm_backend_autoresolve_blocked_dialog) runs this ONLY as the first action on
+# a fresh `blocked` push transition, never speculatively and never as a change
+# to general stale/blocked handling for any other cause.
+
+# fm_backend_herdr_usage_limit_dialog_selects_stop: 0 iff <text> (a plain pane
+# capture) unambiguously shows the dialog above with "Stop and wait for limit
+# to reset" as the CURRENTLY SELECTED option. Requires ALL THREE of the exact
+# "Stop and wait for limit to reset" text, the exact "Ask your admin for more
+# usage" text, and the "Enter to confirm" line, so a coincidental partial
+# match (only one short substring) can never pass. Then requires the `❯`
+# selection cursor to sit on the SAME line as the "Stop and wait" option text -
+# matched by content, not by an assumed option number or position, so a future
+# reordering cannot silently flip the verdict - and requires it does NOT sit on
+# the "Ask your admin" option's line. Counts matching lines with `grep -c`
+# rather than testing non-emptiness, so two independent candidate lines (an
+# unexpected duplicate, not a clean single selection) is ALSO a non-match:
+# every condition must be exactly one match, never "at least one". Any
+# missing signal, any ambiguity, or the cursor on the admin option returns 1
+# (no match) - this never guesses.
+fm_backend_herdr_usage_limit_dialog_selects_stop() {  # <text>
+  local text=${1:-} stop_lines admin_lines
+  printf '%s' "$text" | grep -Fq 'Stop and wait for limit to reset' || return 1
+  printf '%s' "$text" | grep -Fq 'Ask your admin for more usage' || return 1
+  printf '%s' "$text" | grep -Fq 'Enter to confirm' || return 1
+  stop_lines=$(printf '%s' "$text" | grep -F '❯' | grep -Fc 'Stop and wait for limit to reset')
+  admin_lines=$(printf '%s' "$text" | grep -F '❯' | grep -Fc 'Ask your admin for more usage')
+  [ "$stop_lines" = 1 ] || return 1
+  [ "$admin_lines" = 0 ] || return 1
+  return 0
+}
+
+# fm_backend_herdr_autoresolve_usage_limit_dialog: reads <target>'s current
+# pane text and, on an unambiguous match
+# (fm_backend_herdr_usage_limit_dialog_selects_stop), sends exactly one Enter
+# keypress - the ONLY key this function is ever allowed to send, and only
+# because that keypress selects "Stop and wait for limit to reset", NEVER
+# "Ask your admin for more usage" (a cost-increase request that stays the
+# captain's decision alone) - then returns 0. On any ambiguity, a read
+# failure, a failed send, or a plain non-match it sends nothing and returns 1,
+# leaving the caller's normal blocked-wake escalation to fire exactly as
+# before. Idempotent and safe to call speculatively: a non-match is a pure
+# read with no side effects, and a resolved dialog's pane text no longer
+# matches on a later call (the agent has moved on).
+fm_backend_herdr_autoresolve_usage_limit_dialog() {  # <target>
+  local target=${1:-} text
+  text=$(fm_backend_herdr_capture "$target" 100) || return 1
+  fm_backend_herdr_usage_limit_dialog_selects_stop "$text" || return 1
+  fm_backend_herdr_send_key "$target" Enter
+}
+
 # fm_backend_herdr_wait_transition: the bounded event wait. Blocks up to
 # <timeout_secs> for one of <pane_window...> ("<session>:<pane_id>") to reach a
 # fresh `blocked` edge, then prints the normalized record and returns 0.

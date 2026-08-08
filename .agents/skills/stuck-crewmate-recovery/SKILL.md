@@ -18,6 +18,16 @@ That plane covers workers running in this home; a remotely placed secondmate is 
 Load `harness-adapters` before a resume command or a harness-specific skill invocation, and whenever the adapter's own quirks matter.
 The target window's harness is recorded as `harness=` in `state/<id>.meta`.
 
+## Usage-limit dialog auto-resolve
+
+Before a herdr `blocked` transition ever reaches this playbook, the watcher's push-transition handler (`handle_push_transition` in `bin/fm-push-transition-lib.sh`, via `fm_backend_autoresolve_blocked_dialog` in `bin/fm-backend.sh` and `fm_backend_herdr_autoresolve_usage_limit_dialog` in `bin/backends/herdr.sh`) already tried exactly one narrow, pattern-matched auto-resolve: Claude Code's usage-limit dialog ("What do you want to do? / Stop and wait for limit to reset / Ask your admin for more usage").
+On an unambiguous match it sends the single safe keypress that selects "Stop and wait for limit to reset" and the wake never fires at all.
+It is NEVER allowed to select "Ask your admin for more usage" - that is a cost-increase request and stays the captain's decision alone - and it fails closed (sends nothing) on any ambiguity, missing signal, or unexpected surrounding content.
+A herdr `stale: ... waiting on human, escalated immediately` wake that DOES reach this playbook already failed that check, so treat it with the ordinary live-endpoint escalation below exactly as before this mechanism existed.
+
+Only herdr implements this today (docs/verification/runtime-backends.md "Usage-limit dialog auto-resolve").
+Every other verified backend has no equivalent native blocked-transition push (`fm_backend_has_push` is herdr-only), so the same dialog under tmux, zellij, orca, or cmux surfaces through the ordinary stale/wedge-timer path instead, unchanged, and this playbook's live-endpoint escalation is exactly how a human resolves it.
+
 ## Session-start reconciliation for a dead ordinary direct report
 
 This procedure covers ordinary `kind=ship` and `kind=scout` direct reports.

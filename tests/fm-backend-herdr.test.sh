@@ -3150,7 +3150,7 @@ test_composer_state_pi_separator_requires_safe_native_identity() {
 test_composer_state_claude_unbordered_prompt_is_empty() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-claude-bare-empty"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '  20\n  21\n\n\xe2\x9c\xbb Worked for 2s\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n\xe2\x9d\xaf\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n  Opus 4.8 (1M context)   \xe2\x96\x8d               3%%\n  \xe2\x86\x90 for agents\n' > "$resp/1.out"
+  printf '  20\n  21\n\n\xe2\x9c\xbb Worked for 2s\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n❯\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n  Opus 4.8 (1M context)   \xe2\x96\x8d               3%%\n  \xe2\x86\x90 for agents\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3161,7 +3161,7 @@ test_composer_state_claude_unbordered_prompt_is_empty() {
 test_composer_state_claude_unbordered_prompt_is_pending() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-claude-bare-pending"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '  20\n  21\n\n\xe2\x9c\xbb Worked for 2s\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n\xe2\x9d\xaf hello there this is a test message\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n' > "$resp/1.out"
+  printf '  20\n  21\n\n\xe2\x9c\xbb Worked for 2s\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n❯ hello there this is a test message\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3182,7 +3182,7 @@ test_composer_state_claude_unbordered_prompt_is_pending() {
 test_composer_state_bare_prompt_below_stale_bordered_banner_wins() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-banner-priority"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x95\xad\xe2\x94\x80 Claude Code \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xae\n\xe2\x94\x82           Welcome back Kun!           \xe2\x94\x82\n\xe2\x94\x82                                       \xe2\x94\x82\n\xe2\x95\xb0\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xaf\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n\xe2\x9d\xaf still typing captain\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n' > "$resp/1.out"
+  printf '\xe2\x95\xad\xe2\x94\x80 Claude Code \xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xae\n\xe2\x94\x82           Welcome back Kun!           \xe2\x94\x82\n\xe2\x94\x82                                       \xe2\x94\x82\n\xe2\x95\xb0\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x95\xaf\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n❯ still typing captain\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3205,7 +3205,7 @@ test_composer_state_bare_prompt_below_stale_bordered_banner_wins() {
 test_composer_state_claude_dim_prompt_suggestion_ghost_is_empty() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-claude-dim-ghost"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x9c\xbb Brewed for 2m 40s\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n\xe2\x9d\xaf \x1b[0m\x1b[2mwhat did the wheelhouse healing verification find?\x1b[0m\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n  Fable 5                 80%%\n' > "$resp/1.out"
+  printf '\xe2\x9c\xbb Brewed for 2m 40s\n\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n❯ \x1b[0m\x1b[2mwhat did the wheelhouse healing verification find?\x1b[0m\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n  Fable 5                 80%%\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p3' "$ROOT" )
@@ -3219,7 +3219,7 @@ test_composer_state_claude_dim_prompt_suggestion_ghost_is_empty() {
 test_composer_state_claude_dim_ghost_row_with_real_text_is_pending() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-claude-dim-ghost-real"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n\xe2\x9d\xaf land pr 416 now\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n  Fable 5                 80%%\n' > "$resp/1.out"
+  printf '\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n❯ land pr 416 now\n\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\n  Fable 5                 80%%\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p3' "$ROOT" )
@@ -3259,7 +3259,7 @@ test_composer_state_grok_bright_truecolor_real_text_is_pending() {
 test_composer_state_codex_bare_prompt_glyph_is_empty() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-codex-bare"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x80\xa2 You have 2 usage limit resets available.\n\n\xe2\x80\xba\n\n  gpt-5.5 xhigh \xc2\xb7 Context 100%% left\n' > "$resp/1.out"
+  printf '\xe2\x80\xa2 You have 2 usage limit resets available.\n\n\xe2\x80\xba\n\n  gpt-5.5 xhigh · Context 100%% left\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3270,7 +3270,7 @@ test_composer_state_codex_bare_prompt_glyph_is_empty() {
 test_composer_state_codex_faint_suggestion_is_empty() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-codex-faint-suggestion"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x80\xa2 You have 2 usage limit resets available. Run /usage\nto use one.\n\n\x1b[0m\x1b[1m\xe2\x80\xba \x1b[0m\x1b[2mFind and fix a bug in @filename\x1b[0m\n\n  gpt-5.5 xhigh \xc2\xb7 Context 100%% left\n' > "$resp/1.out"
+  printf '\xe2\x80\xa2 You have 2 usage limit resets available. Run /usage\nto use one.\n\n\x1b[0m\x1b[1m\xe2\x80\xba \x1b[0m\x1b[2mFind and fix a bug in @filename\x1b[0m\n\n  gpt-5.5 xhigh · Context 100%% left\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3281,7 +3281,7 @@ test_composer_state_codex_faint_suggestion_is_empty() {
 test_composer_state_codex_non_faint_same_text_is_pending() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-codex-non-faint-same-text"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x80\xa2 You have 2 usage limit resets available. Run /usage\nto use one.\n\n\x1b[0m\x1b[1m\xe2\x80\xba \x1b[0mFind and fix a bug in @filename\n\n  gpt-5.5 xhigh \xc2\xb7 Context 100%% left\n' > "$resp/1.out"
+  printf '\xe2\x80\xa2 You have 2 usage limit resets available. Run /usage\nto use one.\n\n\x1b[0m\x1b[1m\xe2\x80\xba \x1b[0mFind and fix a bug in @filename\n\n  gpt-5.5 xhigh · Context 100%% left\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3491,8 +3491,8 @@ test_send_text_submit_preexisting_working_does_not_false_confirm_swallowed_enter
   dir="$TMP_ROOT/submit-preexisting-working-swallow"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
   printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/2.out"
   printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/3.out"
-  printf '  \xe2\x9d\xaf hello captain\n' > "$resp/4.out"
-  printf '  \xe2\x9d\xaf hello captain\n' > "$resp/6.out"
+  printf '  ❯ hello captain\n' > "$resp/4.out"
+  printf '  ❯ hello captain\n' > "$resp/6.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "hello captain" 2 0.01 0.01' "$ROOT" )
@@ -3529,7 +3529,7 @@ test_send_text_submit_confirms_despite_codex_idle_tip_composer() {
 test_composer_state_codex_dynamic_idle_tip_reads_empty_when_faint() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-codex-dynamic-tip"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '\xe2\x80\xa2 OK\n\n\n\x1b[0m\x1b[1m\xe2\x80\xba \x1b[0m\x1b[2mSummarize recent commits\x1b[0m\n\n  gpt-5.5 xhigh \xc2\xb7 Context 97%% left \xc2\xb7 /private/tmp \xc2\xb7 2\xe2\x80\xa6\n' > "$resp/1.out"
+  printf '\xe2\x80\xa2 OK\n\n\n\x1b[0m\x1b[1m\xe2\x80\xba \x1b[0m\x1b[2mSummarize recent commits\x1b[0m\n\n  gpt-5.5 xhigh · Context 97%% left · /private/tmp · 2\xe2\x80\xa6\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
@@ -3546,7 +3546,7 @@ test_composer_state_codex_dynamic_idle_tip_reads_empty_when_faint() {
 test_composer_state_guard_still_refuses_real_pending_text_after_submit_confirmation_change() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-guard-still-refuses"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
-  printf '  \xe2\x9d\xaf hello there this is a test message\n' > "$resp/1.out"
+  printf '  ❯ hello there this is a test message\n' > "$resp/1.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/fm-backend.sh"; fm_backend_composer_state herdr default:w1:p2' "$ROOT" )
@@ -4200,6 +4200,175 @@ test_wait_transition_clean_timeout_returns_1() {
   pass "fm_backend_herdr_wait_transition: stock macOS Bash clean timeout closes fd 9 and returns 1"
 }
 
+# --- usage-limit dialog auto-resolve -----------------------------------------
+#
+# Portable regression for fm_backend_herdr_usage_limit_dialog_selects_stop and
+# fm_backend_herdr_autoresolve_usage_limit_dialog
+# (docs/verification/runtime-backends.md "Usage-limit dialog auto-resolve",
+# .agents/skills/stuck-crewmate-recovery is the one owner of the mechanism's
+# contract). No real herdr server or Claude Code process is involved: these
+# feed a captured/simulated pane transcript straight into the detection logic,
+# through a fake `herdr` CLI for the integration cases.
+
+# The exact dialog text captured verbatim via `herdr pane read` (task report),
+# with "Stop and wait for limit to reset" selected.
+usage_limit_dialog_stop_selected() {
+  printf 'What do you want to do?\n\n❯ 1. Stop and wait for limit to reset\n  2. Ask your admin for more usage\n\nEnter to confirm · Esc to cancel\n'
+}
+
+# Deliberately-close-but-different: the same dialog with the cursor moved down
+# to "Ask your admin for more usage" instead - the one selection this
+# mechanism must NEVER auto-confirm.
+usage_limit_dialog_admin_selected() {
+  printf 'What do you want to do?\n\n  1. Stop and wait for limit to reset\n❯ 2. Ask your admin for more usage\n\nEnter to confirm · Esc to cancel\n'
+}
+
+test_usage_limit_dialog_selects_stop_matches_real_capture() {
+  ( . "$ROOT/bin/backends/herdr.sh"
+    fm_backend_herdr_usage_limit_dialog_selects_stop "$(usage_limit_dialog_stop_selected)"
+  ) || fail "the real captured dialog text with option 1 selected must match"
+  pass "fm_backend_herdr_usage_limit_dialog_selects_stop: matches the real captured dialog with 'Stop and wait' selected"
+}
+
+test_usage_limit_dialog_selects_stop_refuses_admin_selected() {
+  if ( . "$ROOT/bin/backends/herdr.sh"
+       fm_backend_herdr_usage_limit_dialog_selects_stop "$(usage_limit_dialog_admin_selected)"
+     ); then
+    fail "must NOT match when the cursor sits on 'Ask your admin for more usage' instead - the divergence this check exists to catch"
+  fi
+  pass "fm_backend_herdr_usage_limit_dialog_selects_stop: refuses the deliberately-close-but-different admin-selected variant"
+}
+
+test_usage_limit_dialog_selects_stop_requires_all_three_signals() {
+  local missing_admin missing_stop missing_confirm
+  missing_admin=$'What do you want to do?\n\n❯ 1. Stop and wait for limit to reset\n\nEnter to confirm · Esc to cancel'
+  missing_stop=$'What do you want to do?\n\n  2. Ask your admin for more usage\n\nEnter to confirm · Esc to cancel'
+  missing_confirm=$'What do you want to do?\n\n❯ 1. Stop and wait for limit to reset\n  2. Ask your admin for more usage'
+  ( . "$ROOT/bin/backends/herdr.sh"
+    fm_backend_herdr_usage_limit_dialog_selects_stop "$missing_admin" && exit 1
+    fm_backend_herdr_usage_limit_dialog_selects_stop "$missing_stop" && exit 1
+    fm_backend_herdr_usage_limit_dialog_selects_stop "$missing_confirm" && exit 1
+    exit 0
+  ) || fail "a text missing any one of the three required signals must never match"
+  pass "fm_backend_herdr_usage_limit_dialog_selects_stop: requires all three signals (stop text, admin text, 'Enter to confirm') present"
+}
+
+test_usage_limit_dialog_selects_stop_refuses_unrelated_menu() {
+  ( . "$ROOT/bin/backends/herdr.sh"
+    fm_backend_herdr_usage_limit_dialog_selects_stop $'Allow this command to run?\n\n❯ 1. Yes\n  2. No\n\nEnter to confirm · Esc to cancel' && exit 1
+    exit 0
+  ) || fail "an unrelated menu that merely resembles the shape (arrow + 'Enter to confirm') must never match on that alone"
+  pass "fm_backend_herdr_usage_limit_dialog_selects_stop: refuses an unrelated confirm menu lacking the two option strings"
+}
+
+test_usage_limit_dialog_selects_stop_refuses_ambiguous_double_cursor() {
+  # A malformed/unexpected capture showing the cursor glyph on BOTH option
+  # lines (never produced by the real dialog, but must still fail closed
+  # rather than pick one).
+  ( . "$ROOT/bin/backends/herdr.sh"
+    fm_backend_herdr_usage_limit_dialog_selects_stop $'What do you want to do?\n\n❯ 1. Stop and wait for limit to reset\n❯ 2. Ask your admin for more usage\n\nEnter to confirm · Esc to cancel' && exit 1
+    exit 0
+  ) || fail "a cursor glyph on both option lines is ambiguous and must never match"
+  pass "fm_backend_herdr_usage_limit_dialog_selects_stop: fails closed on an ambiguous double-cursor capture"
+}
+
+test_autoresolve_sends_enter_on_match() {
+  local dir log resp fb rc
+  dir="$TMP_ROOT/usagelimit-match"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  usage_limit_dialog_stop_selected > "$resp/1.out"
+  fb=$(make_herdr_fakebin "$dir")
+  PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_autoresolve_usage_limit_dialog default:w1:p2' "$ROOT"
+  rc=$?
+  [ "$rc" = 0 ] || fail "autoresolve must return 0 on an unambiguous match, got $rc"
+  assert_contains "$(cat "$log")" $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' \
+    "a matched dialog must send exactly the Enter key to the matched pane"
+  pass "fm_backend_herdr_autoresolve_usage_limit_dialog: on a real captured match, sends Enter and returns 0"
+}
+
+test_autoresolve_never_sends_a_key_when_admin_selected() {
+  local dir log resp fb rc
+  dir="$TMP_ROOT/usagelimit-admin"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  usage_limit_dialog_admin_selected > "$resp/1.out"
+  fb=$(make_herdr_fakebin "$dir")
+  PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_autoresolve_usage_limit_dialog default:w1:p2' "$ROOT"
+  rc=$?
+  [ "$rc" -ne 0 ] || fail "autoresolve must never report success when 'Ask your admin' is selected, got rc=$rc"
+  assert_not_contains "$(cat "$log")" $'\x1f''send-keys' \
+    "autoresolve must send NO key at all when the admin option is selected - the only forbidden outcome"
+  pass "fm_backend_herdr_autoresolve_usage_limit_dialog: sends no key and fails when 'Ask your admin' is selected"
+}
+
+test_autoresolve_never_sends_a_key_on_unrelated_pane_content() {
+  local dir log resp fb rc
+  dir="$TMP_ROOT/usagelimit-unrelated"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  printf 'implementing the fix\nrunning tests...\n' > "$resp/1.out"
+  fb=$(make_herdr_fakebin "$dir")
+  PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_autoresolve_usage_limit_dialog default:w1:p2' "$ROOT"
+  rc=$?
+  [ "$rc" -ne 0 ] || fail "autoresolve must not report success against ordinary unrelated pane content, got rc=$rc"
+  assert_not_contains "$(cat "$log")" $'\x1f''send-keys' \
+    "autoresolve must send no key when the pane shows ordinary unrelated content"
+  pass "fm_backend_herdr_autoresolve_usage_limit_dialog: sends no key against ordinary unrelated pane content"
+}
+
+# --- handle_push_transition: the real call site suppresses or fires the wake -
+#
+# Exercises bin/fm-push-transition-lib.sh's handle_push_transition through the
+# SAME fake herdr CLI, proving the auto-resolve hook actually reaches the
+# watcher's blocked-wake entry point rather than only the adapter function in
+# isolation.
+
+make_transition_lib_env() {  # <dir> -> echoes fakebin dir, sets up scratch state
+  local dir=$1
+  mkdir -p "$dir/responses" "$dir/state"
+  : > "$dir/log"
+  make_herdr_fakebin "$dir"
+}
+
+run_handle_push_transition_in_scratch_env() {  # <fakebin-dir> <log> <responses> <state-dir> <record>
+  local fb=$1 log=$2 resp=$3 st=$4 rec=$5
+  PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    FM_STATE_OVERRIDE="$st" FM_ROOT_OVERRIDE="$ROOT" \
+    bash -c '
+      # shellcheck source=bin/fm-push-transition-lib.sh
+      . "$0/bin/fm-push-transition-lib.sh"
+      st=$1
+      wake() { echo "WAKE_CALLED:$1" >> "$st/.wake-called"; return 0; }
+      handle_push_transition herdr default "$2"
+    ' "$ROOT" "$st" "$rec"
+}
+
+test_handle_push_transition_suppresses_wake_on_match() {
+  local dir log resp fb state rec
+  dir="$TMP_ROOT/hpt-match"; fb=$(make_transition_lib_env "$dir")
+  log="$dir/log"; resp="$dir/responses"; state="$dir/state"
+  usage_limit_dialog_stop_selected > "$resp/1.out"
+  rec=$(printf 'p2\tw1\t\tblocked\tclaude')
+  run_handle_push_transition_in_scratch_env "$fb" "$log" "$resp" "$state" "$rec"
+  [ ! -e "$state/.wake-called" ] || fail "a matched dialog must never call wake() at all: $(cat "$state/.wake-called" 2>/dev/null)"
+  [ ! -e "$state/.wake-queue" ] || fail "a matched dialog must never append to the durable wake queue: $(cat "$state/.wake-queue" 2>/dev/null)"
+  assert_contains "$(cat "$log")" $'\x1f''send-keys'$'\x1f''p2'$'\x1f''enter' \
+    "handle_push_transition did not reach the real send-keys call on a match"
+  pass "handle_push_transition: a matched usage-limit dialog auto-resolves and never fires the wake"
+}
+
+test_handle_push_transition_fires_wake_when_no_match() {
+  local dir log resp fb state rec
+  dir="$TMP_ROOT/hpt-nomatch"; fb=$(make_transition_lib_env "$dir")
+  log="$dir/log"; resp="$dir/responses"; state="$dir/state"
+  printf 'implementing the fix\n' > "$resp/1.out"
+  rec=$(printf 'p2\tw1\t\tblocked\tclaude')
+  run_handle_push_transition_in_scratch_env "$fb" "$log" "$resp" "$state" "$rec"
+  [ -e "$state/.wake-called" ] || fail "a non-matching blocked transition must still fire the wake exactly as before this task - this is the required divergence assertion"
+  grep -q 'herdr: agent blocked' "$state/.wake-called" || fail "the wake reason must still name the herdr-blocked cause unchanged: $(cat "$state/.wake-called")"
+  assert_not_contains "$(cat "$log")" $'\x1f''send-keys' \
+    "a non-matching transition must never send any key"
+  pass "handle_push_transition: an ordinary (non-dialog) blocked transition still fires the wake unchanged"
+}
+
 # shellcheck source=bin/fm-backend.sh
 . "$ROOT/bin/fm-backend.sh"
 
@@ -4374,3 +4543,13 @@ test_wait_transition_stream_absorb_clears_then_timeout
 test_wait_transition_reader_failure_returns_2
 test_wait_transition_bad_ack_returns_2_and_cleans_up
 test_wait_transition_clean_timeout_returns_1
+test_usage_limit_dialog_selects_stop_matches_real_capture
+test_usage_limit_dialog_selects_stop_refuses_admin_selected
+test_usage_limit_dialog_selects_stop_requires_all_three_signals
+test_usage_limit_dialog_selects_stop_refuses_unrelated_menu
+test_usage_limit_dialog_selects_stop_refuses_ambiguous_double_cursor
+test_autoresolve_sends_enter_on_match
+test_autoresolve_never_sends_a_key_when_admin_selected
+test_autoresolve_never_sends_a_key_on_unrelated_pane_content
+test_handle_push_transition_suppresses_wake_on_match
+test_handle_push_transition_fires_wake_when_no_match
