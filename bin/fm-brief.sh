@@ -393,11 +393,16 @@ Follow the guidance no-mistakes itself provides for the mechanics: it loads when
 When starting no-mistakes, make \`--intent\` preserve all relevant content from this brief's \`# Task\` section plus every later accepted Firstmate requirement, clarification, constraint, exclusion, and supersession, carrying only each requirement's current accepted form; retain direct requirements instead of substituting a diff summary, and exclude generic operational, status, delivery, and other scaffold boilerplate unless it is task-specific.
 Do not hand-edit, commit, or fix findings yourself while a run is active - the pipeline applies every fix.
 
-Two firstmate-specific rules layer on top of that guidance:
+Three firstmate-specific rules layer on top of that guidance:
 - ask-user findings are never yours to answer: escalate to firstmate (rule 6) and stop.
   Firstmate applies the authority contract in its \`AGENTS.md\` and obtains any required captain decision.
   When the decision comes back, feed it to the gate with \`no-mistakes axi respond\` and let the pipeline apply it - do not route the question to "the user" or implement the fix yourself.
 - Avoid \`--yes\`: it would silently bypass firstmate's authority check and any required captain escalation.
+- Before starting no-mistakes, check whether your current branch already has an open PR: \`gh-axi pr list --head <branch> --json number,baseRefName,url\`.
+  If one exists, record its number and base branch - that is the PR of record, and no-mistakes's own push/PR step must never be allowed to silently supersede it with a second one.
+  After /no-mistakes reports a PR, verify it is the SAME PR number you recorded; if no PR existed beforehand, this is the normal case and no extra action is needed beyond confirming no-mistakes' own reported PR is real and green.
+  If no-mistakes instead opened a different PR number, do not report \`done:\` yet: close the stray duplicate yourself (\`gh-axi pr close <wrong-number> --comment "..."\` pointing at the real PR) and confirm the real PR's \`mergeable\`/\`mergeStateStatus\` is not \`CONFLICTING\`/\`DIRTY\`.
+  If it is not clean, the branch was likely rebased onto the wrong base the same way; reconcile it (verify with \`git merge-base --is-ancestor\`, rebuild from the last-known-good commit, force-push) before reporting done.
 
 After /no-mistakes reports CI green (the CI-ready return point - do not wait for it to keep monitoring in the background until merge), append \`done: PR {url} checks green\` and stop. You are finished.
 EOF
