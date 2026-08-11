@@ -6,7 +6,7 @@
 # description, acceptance criteria, and context, and may adjust other sections
 # when the task genuinely deviates (e.g. working an existing external PR instead
 # of shipping a new one).
-# Usage: fm-brief.sh <task-id> <repo-name> --mode <no-mistakes|direct-PR|local-only> [--herdr-lab]
+# Usage: fm-brief.sh <task-id> <repo-name> --mode <no-mistakes|direct-PR|local-only> [--herdr-lab] [--validate-now]
 #        fm-brief.sh <task-id> <repo-name> --scout [--herdr-lab]
 #        fm-brief.sh <task-id> --secondmate {<project>...|--no-projects}
 #   --scout writes the scout contract instead: the deliverable is a report at
@@ -36,6 +36,19 @@
 #                the configured merge authority approves, firstmate merges to local main
 # no-mistakes-prod-only is a registry policy, not a task mode; resolve it to one of
 # the three concrete modes at intake before calling this script.
+# For no-mistakes ship tasks, validation timing is a second, independent choice recorded
+# as "validate=deferred" or "validate=immediate" on the same Delivery contract line:
+#   (default, no flag)  deferred: the worker implements, commits, and keeps iterating on
+#                        further captain feedback via nonterminal working: checkpoints; it
+#                        never reports a terminal done: for its first working version and
+#                        never starts /no-mistakes on its own initiative. Firstmate steers
+#                        it into /no-mistakes only once the captain signals readiness to ship.
+#   --validate-now       immediate: the worker reports done: as soon as it believes the
+#                        implementation is complete, and firstmate steers it into
+#                        /no-mistakes right away. Use for a small, unambiguous fix with no
+#                        reason to hold off on validation.
+# --validate-now is meaningful only with --mode no-mistakes; it is refused on direct-PR,
+# local-only, scout, and secondmate scaffolds, none of which ever run /no-mistakes.
 # The generated ship brief records the chosen mode as a fixed machine-readable
 # "Delivery contract: mode=<mode>" line. bin/fm-spawn.sh reads that line and refuses
 # to launch a ship task whose explicit --mode disagrees, so an adjusted brief and the
@@ -106,6 +119,7 @@ HERDR_LAB=0
 NO_PROJECTS=0
 MODE=
 MODE_SET=0
+VALIDATE_NOW=0
 POS=()
 want_value=
 for a in "$@"; do
@@ -125,6 +139,7 @@ for a in "$@"; do
     --secondmate) KIND=secondmate ;;
     --herdr-lab) HERDR_LAB=1 ;;
     --no-projects) NO_PROJECTS=1 ;;
+    --validate-now) VALIDATE_NOW=1 ;;
     --mode) want_value=mode ;;
     --mode=*) MODE=${a#--mode=}; MODE_SET=1 ;;
     # yolo never reaches the worker: it is firstmate's approval authority, not a
@@ -152,6 +167,11 @@ if [ "$KIND" = ship ]; then
   esac
 elif [ "$MODE_SET" -eq 1 ]; then
   echo "error: --mode applies only to ship briefs; a scout delivers a report and a secondmate charter is not a delivery contract" >&2
+  exit 1
+fi
+
+if [ "$VALIDATE_NOW" -eq 1 ] && { [ "$KIND" != ship ] || [ "$MODE" != no-mistakes ]; }; then
+  echo "error: --validate-now applies only to --mode no-mistakes ship briefs; direct-PR, local-only, scout, and secondmate briefs never run /no-mistakes" >&2
   exit 1
 fi
 ID=${POS[0]}
@@ -381,13 +401,10 @@ EOF
     SETUP2="
 2. Run \`no-mistakes doctor\`; if it reports the repo is not initialized here, run \`no-mistakes init\`."
     RULE1='1. Never push to the default branch. Never merge a PR.'
-    IFS= read -r -d '' DOD <<EOF || true
-# Definition of done
-Delivery contract: mode=no-mistakes
-The task is complete only when committed on your branch.
-When you believe it is complete, append \`done: {summary}\` to the status file and stop.
-Firstmate will then instruct you to run /no-mistakes to validate and ship a PR.
-
+    # Shared once validation actually starts, regardless of when it starts (one-owner
+    # rule): both the deferred and immediate DoD variants below reference this same text
+    # rather than each restating the no-mistakes-running mechanics.
+    IFS= read -r -d '' NOMISTAKES_MECHANICS <<EOF || true
 You drive no-mistakes by responding to its gates, not by implementing fixes.
 Follow the guidance no-mistakes itself provides for the mechanics: it loads when you invoke /no-mistakes, and \`no-mistakes axi run --help\` plus the \`help\` lines in each \`axi\` response are authoritative and version-matched to the installed binary.
 When starting no-mistakes, make \`--intent\` preserve all relevant content from this brief's \`# Task\` section plus every later accepted Firstmate requirement, clarification, constraint, exclusion, and supersession, carrying only each requirement's current accepted form; retain direct requirements instead of substituting a diff summary, and exclude generic operational, status, delivery, and other scaffold boilerplate unless it is task-specific.
@@ -407,6 +424,30 @@ Three firstmate-specific rules layer on top of that guidance:
 
 After /no-mistakes reports CI green (the CI-ready return point - do not wait for it to keep monitoring in the background until merge), append \`done: PR {url} checks green\` and stop. You are finished.
 EOF
+    NOMISTAKES_MECHANICS=${NOMISTAKES_MECHANICS%$'\n'}
+    if [ "$VALIDATE_NOW" -eq 1 ]; then
+      IFS= read -r -d '' DOD <<EOF || true
+# Definition of done
+Delivery contract: mode=no-mistakes validate=immediate
+The task is complete only when committed on your branch.
+When you believe it is complete, append \`done: {summary}\` to the status file and stop.
+Firstmate will then instruct you to run /no-mistakes to validate and ship a PR.
+
+$NOMISTAKES_MECHANICS
+EOF
+    else
+      IFS= read -r -d '' DOD <<EOF || true
+# Definition of done
+Delivery contract: mode=no-mistakes validate=deferred
+The task is complete only when committed on your branch.
+Implement, commit, and keep iterating on further captain feedback: report each meaningful chunk as a nonterminal \`working:\` checkpoint under rule 4 above, and never report a terminal \`done:\` for your first working version.
+Do not push proactively after every commit; push only when firstmate explicitly tells you to.
+Do not start /no-mistakes on your own initiative no matter how complete the work feels; start it only on an explicit firstmate steer, never something you infer from the task going quiet.
+Once firstmate does steer you into /no-mistakes, the following mechanics apply:
+
+$NOMISTAKES_MECHANICS
+EOF
+    fi
     ;;
 esac
 

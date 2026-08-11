@@ -195,7 +195,7 @@ EOF
 # one of these DOD blocks, since a broken heredoc corrupts or empties the
 # generated brief content, not just the script's own syntax.
 test_ship_modes_generate_clean_briefs() {
-  local home id mode brief status
+  local home id mode contract brief status
   home="$TMP_ROOT/ship-home"
   write_registry "$home"
 
@@ -207,7 +207,13 @@ test_ship_modes_generate_clean_briefs() {
     brief="$home/data/$id/brief.md"
     assert_present "$brief" "$id: brief was not scaffolded"
     assert_grep "# Definition of done" "$brief" "$id: brief missing Definition of done section"
-    grep -qx "Delivery contract: mode=$mode" "$brief" \
+    # A no-mistakes brief also records its deferred-vs-immediate validation choice
+    # on the same line; deferred is the default with no --validate-now flag.
+    case "$mode" in
+      no-mistakes) contract="mode=no-mistakes validate=deferred" ;;
+      *) contract="mode=$mode" ;;
+    esac
+    grep -qx "Delivery contract: $contract" "$brief" \
       || fail "$id: brief did not record its machine-readable delivery contract line"
     assert_grep "{TASK}" "$brief" "$id: brief missing the {TASK} placeholder"
     assert_grep "mid-task \`working:\` line (including setup complete) is nonterminal" "$brief" \
@@ -254,9 +260,9 @@ test_ship_mode_is_explicit_not_registry() {
   FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-explicit-a5 direct-proj --mode no-mistakes >/dev/null 2>&1 \
     || fail "explicit no-mistakes brief on a direct-PR project should scaffold"
   brief="$home/data/brief-explicit-a5/brief.md"
-  grep -qx "Delivery contract: mode=no-mistakes" "$brief" \
+  grep -qx "Delivery contract: mode=no-mistakes validate=deferred" "$brief" \
     || fail "registered direct-PR posture overrode the explicit --mode"
-  assert_grep "Firstmate will then instruct you to run /no-mistakes" "$brief" \
+  assert_grep "no-mistakes itself provides for the mechanics" "$brief" \
     "explicit no-mistakes brief did not render the pipeline definition of done"
 
   # An unregistered project is not a blocker either, because nothing is looked up.
@@ -352,6 +358,80 @@ test_no_mistakes_dod_wording() {
   assert_grep "firstmate's authority check" "$brief" \
     "no-mistakes DOD lost the apostrophe prose that the structural fix makes parse-safe"
   pass "fm-brief.sh: no-mistakes DOD keeps its apostrophe prose, now parse-safe"
+}
+
+# Deferred validation is the structural default for no-mistakes ship briefs: the
+# worker must iterate on nonterminal working: checkpoints and never self-start
+# /no-mistakes, without firstmate having to hand-edit each brief to say so.
+test_deferred_validation_is_the_default() {
+  local home id brief
+  home="$TMP_ROOT/deferred-default-home"
+  mkdir -p "$home/data"
+  id="brief-deferred-default-e2"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode no-mistakes >/dev/null 2>&1 \
+    || fail "a plain no-mistakes brief (no --validate-now) should scaffold"
+  brief="$home/data/$id/brief.md"
+  grep -qx "Delivery contract: mode=no-mistakes validate=deferred" "$brief" \
+    || fail "default no-mistakes brief did not record validate=deferred on the delivery contract line"
+  assert_grep "report each meaningful chunk as a nonterminal \`working:\` checkpoint under rule 4 above" "$brief" \
+    "deferred brief lost the nonterminal working: checkpoint instruction"
+  assert_grep "never report a terminal \`done:\` for your first working version" "$brief" \
+    "deferred brief lost the no-terminal-done-on-first-version instruction"
+  assert_grep "push only when firstmate explicitly tells you to" "$brief" \
+    "deferred brief lost the no-proactive-push instruction"
+  assert_grep "Do not start /no-mistakes on your own initiative" "$brief" \
+    "deferred brief lost the no-self-initiated-validation instruction"
+  assert_no_grep "When you believe it is complete, append \`done: {summary}\`" "$brief" \
+    "deferred brief should not carry the immediate done: reporting instruction"
+  # Both variants converge on the same shared mechanics once validation starts
+  # (one-owner rule: this text is never restated between the two variants).
+  assert_grep "no-mistakes itself provides for the mechanics" "$brief" \
+    "deferred brief lost the shared no-mistakes-running mechanics"
+  pass "fm-brief.sh: deferred validation is the default no-mistakes definition of done"
+}
+
+# --validate-now is the explicit opt-out for a task with no reason to hold off on
+# validation: it must reproduce the original immediate behavior exactly.
+test_validate_now_selects_immediate_dod() {
+  local home id brief
+  home="$TMP_ROOT/validate-now-home"
+  mkdir -p "$home/data"
+  id="brief-validate-now-e1"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode no-mistakes --validate-now >/dev/null 2>&1 \
+    || fail "--validate-now on a no-mistakes brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  grep -qx "Delivery contract: mode=no-mistakes validate=immediate" "$brief" \
+    || fail "--validate-now did not record validate=immediate on the delivery contract line"
+  assert_grep "When you believe it is complete, append \`done: {summary}\` to the status file and stop." "$brief" \
+    "--validate-now brief lost the immediate done: reporting instruction"
+  assert_grep "Firstmate will then instruct you to run /no-mistakes to validate and ship a PR." "$brief" \
+    "--validate-now brief lost the immediate-steer instruction"
+  assert_no_grep "Do not start /no-mistakes on your own initiative" "$brief" \
+    "--validate-now brief should not carry the deferred no-self-initiative instruction"
+  assert_grep "no-mistakes itself provides for the mechanics" "$brief" \
+    "--validate-now brief lost the shared no-mistakes-running mechanics"
+  pass "fm-brief.sh: --validate-now selects the immediate no-mistakes definition of done"
+}
+
+# --validate-now only means something for a mode that ever runs /no-mistakes.
+test_validate_now_is_refused_where_no_mistakes_never_runs() {
+  local home out status label args expect
+  home="$TMP_ROOT/validate-now-refused-home"
+  mkdir -p "$home/data"
+  while IFS='|' read -r label args expect; do
+    [ -n "$label" ] || continue
+    # shellcheck disable=SC2086  # args is an intentional word-split arg list
+    out=$(FM_HOME="$home" "$ROOT/bin/fm-brief.sh" $args 2>&1)
+    status=$?
+    [ "$status" -ne 0 ] || fail "$label: expected a non-zero exit"
+    assert_contains "$out" "$expect" "$label: refusal did not explain why"
+  done <<'ROWS'
+validate-now on direct-PR|brief-validate-now-refused-f1 some-proj --mode direct-PR --validate-now|--validate-now applies only to --mode no-mistakes
+validate-now on local-only|brief-validate-now-refused-f2 some-proj --mode local-only --validate-now|--validate-now applies only to --mode no-mistakes
+validate-now on scout|brief-validate-now-refused-f3 some-proj --scout --validate-now|--validate-now applies only to --mode no-mistakes
+validate-now on secondmate|brief-validate-now-refused-f4 --secondmate --no-projects --validate-now|--validate-now applies only to --mode no-mistakes
+ROWS
+  pass "fm-brief.sh: --validate-now is refused on direct-PR, local-only, scout, and secondmate scaffolds"
 }
 
 test_ship_project_memory_wording() {
@@ -719,6 +799,9 @@ test_ship_mode_is_explicit_not_registry
 test_delivery_flags_are_refused_where_they_do_not_apply
 test_faster_paths_use_configured_authority_without_stacked_review
 test_no_mistakes_dod_wording
+test_deferred_validation_is_the_default
+test_validate_now_selects_immediate_dod
+test_validate_now_is_refused_where_no_mistakes_never_runs
 test_ship_project_memory_wording
 test_herdr_lab_contract_is_explicit_and_complete
 test_herdr_lab_contract_quotes_foreign_firstmate_path

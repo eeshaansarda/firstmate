@@ -323,7 +323,8 @@ After an autonomous merge, give the captain a one-line full-URL or local-main ou
 
 ### Validate
 
-For a no-mistakes ship, trigger validation on the same worker after its implementation commit, using the harness invocation owned by `harness-adapters`.
+For a no-mistakes ship, deferred validation is the standing default: the worker implements, commits, and keeps iterating on further captain feedback, and firstmate explicitly steers it into `/no-mistakes`, using the harness invocation owned by `harness-adapters`, only once the captain signals readiness to ship, rather than immediately after the worker's first implementation commit.
+`bin/fm-brief.sh --validate-now` opts a task with no reason to hold off on validation into triggering it immediately after that first implementation commit instead; the brief records the resolved choice as `validate=deferred` or `validate=immediate` on its `Delivery contract:` line.
 The task worker that starts a no-mistakes run drives the pipeline and owns every `no-mistakes axi run` and `no-mistakes axi respond` call through the next gate or outcome.
 Firstmate never invokes `no-mistakes axi respond` for a crew-owned run.
 Once validation starts, prefer routing new requirements to follow-up work rather than expanding the current task, unless a new requirement completely invalidates the work being validated; however, the smallest downstream changes needed to keep already accepted product or engineering behavior correct, add behavioral tests where an executable contract exists, or keep documentation accurate remain within the current task even when they touch files not named at intake, and corrections required to satisfy already accepted intent are not new requirements.
