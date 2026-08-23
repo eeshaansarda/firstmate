@@ -75,6 +75,24 @@ run_review_diff() {
     "$REVIEW_DIFF" "$@"
 }
 
+test_meta_branch_field_overrides_default_fm_id_branch() {
+  local case_dir out
+  case_dir=$(make_case custom-branch)
+  git -C "$case_dir/wt" checkout -q -b feat/custom
+  printf 'feat-custom\n' > "$case_dir/wt/feature.txt"
+  git -C "$case_dir/wt" add feature.txt
+  git -C "$case_dir/wt" commit -qm "feature commit on a project-convention branch"
+  write_task_meta "$case_dir" "branch=feat/custom"
+
+  out=$(run_review_diff "$case_dir" task-x1 2> "$case_dir/stderr")
+
+  assert_contains "$out" '+feat-custom' \
+    "custom-branch: diff should use the branch= field recorded in meta"
+  assert_not_contains "$(cat "$case_dir/stderr")" 'error' \
+    "custom-branch: should not error resolving a non-default recorded branch"
+  pass "fm-review-diff reads branch= from meta instead of assuming fm/<id>"
+}
+
 test_pr_meta_uses_pr_head_not_stale_local() {
   local case_dir out
   case_dir=$(make_case pr-head-sha)
@@ -169,6 +187,7 @@ test_unreachable_pr_head_falls_back_with_warning() {
   pass "fm-review-diff falls back to local branch with a warning when PR head is unreachable"
 }
 
+test_meta_branch_field_overrides_default_fm_id_branch
 test_pr_meta_uses_pr_head_not_stale_local
 test_pr_meta_fetches_pull_head_without_recorded_sha
 test_stale_recorded_pr_head_loses_to_fetched_pull_head

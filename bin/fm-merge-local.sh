@@ -41,7 +41,11 @@ default_branch() {
   return 1
 }
 
-BRANCH="fm/$ID"
+# branch= records the task's actual branch (bin/fm-spawn.sh's --branch override,
+# or fm/<id> by default); fall back to fm/<id> only for a task spawned before
+# that field existed.
+BRANCH=$(grep '^branch=' "$META" | tail -1 | cut -d= -f2- || true)
+[ -n "$BRANCH" ] || BRANCH="fm/$ID"
 git -C "$PROJ" rev-parse --verify --quiet "refs/heads/$BRANCH" >/dev/null || { echo "error: branch $BRANCH does not exist in $PROJ" >&2; exit 1; }
 
 DEFAULT=$(default_branch) || { echo "error: cannot determine default branch for $PROJ; expected origin/HEAD, main, or master" >&2; exit 1; }

@@ -6,7 +6,7 @@
 # description, acceptance criteria, and context, and may adjust other sections
 # when the task genuinely deviates (e.g. working an existing external PR instead
 # of shipping a new one).
-# Usage: fm-brief.sh <task-id> <repo-name> --mode <no-mistakes|direct-PR|local-only> [--herdr-lab] [--validate-now]
+# Usage: fm-brief.sh <task-id> <repo-name> --mode <no-mistakes|direct-PR|local-only> [--herdr-lab] [--validate-now] [--branch <name>]
 #        fm-brief.sh <task-id> <repo-name> --scout [--herdr-lab]
 #        fm-brief.sh <task-id> --secondmate {<project>...|--no-projects}
 #   --scout writes the scout contract instead: the deliverable is a report at
@@ -49,6 +49,17 @@
 #                        reason to hold off on validation.
 # --validate-now is meaningful only with --mode no-mistakes; it is refused on direct-PR,
 # local-only, scout, and secondmate scaffolds, none of which ever run /no-mistakes.
+# --branch <name> overrides the branch this ship brief creates and references
+# throughout (the setup step, the rules, and every Definition-of-done branch
+# mention) instead of the default fm/<task-id>. Firstmate resolves it per task,
+# the same way --mode is resolved (AGENTS.md section 7), typically to match a
+# project's own branch-naming convention. There is exactly one place in this
+# script that computes the effective branch name; every mention below
+# interpolates from it, so the brief and the default can never drift apart.
+# bin/fm-spawn.sh does not read this brief to learn the branch: pass it the
+# identical --branch value separately so the recorded branch= metadata matches
+# what was scaffolded here. --branch is refused on --scout and --secondmate
+# scaffolds, matching how --validate-now is refused there.
 # The generated ship brief records the chosen mode as a fixed machine-readable
 # "Delivery contract: mode=<mode>" line. bin/fm-spawn.sh reads that line and refuses
 # to launch a ship task whose explicit --mode disagrees, so an adjusted brief and the
@@ -120,6 +131,8 @@ NO_PROJECTS=0
 MODE=
 MODE_SET=0
 VALIDATE_NOW=0
+BRANCH=
+BRANCH_SET=0
 POS=()
 want_value=
 for a in "$@"; do
@@ -129,6 +142,7 @@ for a in "$@"; do
     esac
     case "$want_value" in
       mode) MODE=$a; MODE_SET=1 ;;
+      branch) BRANCH=$a; BRANCH_SET=1 ;;
       *) echo "error: internal parser state for --$want_value" >&2; exit 1 ;;
     esac
     want_value=
@@ -142,6 +156,8 @@ for a in "$@"; do
     --validate-now) VALIDATE_NOW=1 ;;
     --mode) want_value=mode ;;
     --mode=*) MODE=${a#--mode=}; MODE_SET=1 ;;
+    --branch) want_value=branch ;;
+    --branch=*) BRANCH=${a#--branch=}; BRANCH_SET=1 ;;
     # yolo never reaches the worker: it is firstmate's merge authority, not a
     # brief input. Refuse it loudly so it is never silently dropped here and then
     # believed to have been recorded.
@@ -174,7 +190,15 @@ if [ "$VALIDATE_NOW" -eq 1 ] && { [ "$KIND" != ship ] || [ "$MODE" != no-mistake
   echo "error: --validate-now applies only to --mode no-mistakes ship briefs; direct-PR, local-only, scout, and secondmate briefs never run /no-mistakes" >&2
   exit 1
 fi
+if [ "$BRANCH_SET" -eq 1 ]; then
+  [ -n "$BRANCH" ] || { echo "error: --branch requires a non-empty value" >&2; exit 1; }
+  [ "$KIND" = ship ] || { echo "error: --branch applies only to ship briefs; a scout has no branch and a secondmate charter is not a delivery contract" >&2; exit 1; }
+fi
 ID=${POS[0]}
+# Single computation point for the effective branch name (one-owner rule): every
+# later mention of the branch in a ship brief interpolates $BRANCH rather than
+# restating "fm/$ID" as a second literal that could drift from this default.
+BRANCH=${BRANCH:-fm/$ID}
 
 if [ "$KIND" = secondmate ] && [ "$HERDR_LAB" -eq 1 ]; then
   echo "error: --herdr-lab applies only to crewmate ship or scout briefs" >&2
@@ -375,7 +399,7 @@ fi
 case "$MODE" in
   direct-PR)
     SETUP2=""
-    RULE1='1. Never push to the default branch (push only your `fm/'"$ID"'` branch). Never merge a PR.'
+    RULE1='1. Never push to the default branch (push only your `'"$BRANCH"'` branch). Never merge a PR.'
     IFS= read -r -d '' DOD <<EOF || true
 # Definition of done
 Delivery contract: mode=direct-PR
@@ -387,14 +411,14 @@ EOF
     ;;
   local-only)
     SETUP2=""
-    RULE1="1. Never push to any remote and never open a PR. Work only on your \`fm/$ID\` branch; firstmate handles the merge into local \`main\`."
+    RULE1="1. Never push to any remote and never open a PR. Work only on your \`$BRANCH\` branch; firstmate handles the merge into local \`main\`."
     IFS= read -r -d '' DOD <<EOF || true
 # Definition of done
 Delivery contract: mode=local-only
 This task ships **local-only**: no remote, no PR, no pipeline.
-The task is complete only when committed on your branch \`fm/$ID\`. Do NOT push, do NOT open a PR, do NOT merge.
+The task is complete only when committed on your branch \`$BRANCH\`. Do NOT push, do NOT open a PR, do NOT merge.
 Keep your branch a clean fast-forward onto the current default branch - if \`main\` has advanced, rebase onto it so the eventual merge stays a fast-forward.
-When it is implemented and committed, append \`done: ready in branch fm/$ID\` to the status file and stop.
+When it is implemented and committed, append \`done: ready in branch $BRANCH\` to the status file and stop.
 The configured merge authority approves the ready branch, then firstmate merges it into local \`main\` through the guarded fast-forward path.
 EOF
     ;;
@@ -472,7 +496,7 @@ You are in a disposable git worktree of $REPO, at a detached HEAD on a clean def
 The path check is authoritative: \`git rev-parse --git-dir\` and \`git rev-parse --git-common-dir\` can help inspect the repo, but they do not prove you are outside the primary checkout.
 If the top-level path is the primary checkout or not the worktree you were launched in, STOP - do not branch or commit here - append \`blocked: launched in primary checkout, not an isolated worktree\` to the status file and stop.
 
-1. First action: create your branch: \`git checkout -b fm/$ID\`$SETUP2
+1. First action: create your branch: \`git checkout -b $BRANCH\`$SETUP2
 
 # Rules
 $RULE1
