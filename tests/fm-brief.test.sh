@@ -174,6 +174,8 @@ test_help_includes_entire_header() {
   local help
   help=$("$ROOT/bin/fm-brief.sh" --help)
   assert_contains "$help" "Refuses to overwrite an existing brief." "fm-brief.sh --help omitted its header terminator"
+  assert_contains "$help" "--branch <name>" "fm-brief.sh --help did not document --branch"
+  assert_contains "$help" "refused on --scout and --secondmate" "fm-brief.sh --help did not document the --branch scout/secondmate refusal"
   pass "fm-brief.sh: --help renders the complete header"
 }
 
@@ -221,6 +223,86 @@ test_ship_modes_generate_clean_briefs() {
     assert_no_grep "EOF" "$brief" "$id: brief leaked a heredoc EOF marker (unterminated heredoc)"
   done
   pass "fm-brief.sh: no-mistakes/direct-PR/local-only briefs generate cleanly"
+}
+
+# --branch overrides the branch created and referenced throughout a ship brief
+# (setup step, rule 1, and every Definition-of-done branch mention) instead of
+# the hardcoded fm/<id>, for every delivery mode.
+test_branch_flag_overrides_ship_brief() {
+  local home id mode brief
+  home="$TMP_ROOT/branch-override-home"
+  mkdir -p "$home/data"
+
+  for id_mode in "brief-branch-nm-a1:no-mistakes" "brief-branch-direct-a2:direct-PR" "brief-branch-local-a3:local-only"; do
+    id=${id_mode%%:*}
+    mode=${id_mode##*:}
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode "$mode" --branch feat/example >/dev/null 2>&1 \
+      || fail "$id --mode $mode --branch feat/example should scaffold"
+    brief="$home/data/$id/brief.md"
+    assert_grep "git checkout -b feat/example" "$brief" \
+      "$id: setup step did not create the overridden branch"
+    assert_no_grep "fm/$id" "$brief" \
+      "$id: brief retained the default fm/<id> branch name alongside the override"
+    case "$mode" in
+      direct-PR) assert_grep "push only your \`feat/example\` branch" "$brief" \
+          "$id: direct-PR rule 1 did not reference the overridden branch" ;;
+      local-only)
+        assert_grep "Work only on your \`feat/example\` branch" "$brief" \
+          "$id: local-only rule 1 did not reference the overridden branch"
+        assert_grep "committed on your branch \`feat/example\`" "$brief" \
+          "$id: local-only DoD did not reference the overridden branch"
+        assert_grep 'done: ready in branch feat/example' "$brief" \
+          "$id: local-only DoD done: line did not reference the overridden branch" ;;
+    esac
+  done
+  pass "fm-brief.sh: --branch overrides the created/referenced branch for every ship mode"
+}
+
+# The default fm/<id> path must be byte-for-byte unaffected by adding --branch:
+# an omitted flag and an explicit flag carrying the exact default value must
+# scaffold identical briefs, proving the new flag's plumbing changes nothing
+# else about the generated content.
+test_branch_flag_omission_is_byte_identical_to_explicit_default() {
+  local tmp id shared_state without_flag with_default_flag
+  tmp="$TMP_ROOT/branch-byte-identical"
+  shared_state="$tmp/shared-state"
+  mkdir -p "$tmp/home" "$tmp/data-without" "$tmp/data-with-default" "$shared_state"
+  id="brief-branch-byte-b1"
+
+  FM_HOME="$tmp/home" FM_DATA_OVERRIDE="$tmp/data-without" FM_STATE_OVERRIDE="$shared_state" \
+    "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode no-mistakes >/dev/null 2>&1 \
+    || fail "baseline scaffold (no --branch) should exit 0"
+  without_flag="$tmp/data-without/$id/brief.md"
+
+  FM_HOME="$tmp/home" FM_DATA_OVERRIDE="$tmp/data-with-default" FM_STATE_OVERRIDE="$shared_state" \
+    "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode no-mistakes --branch "fm/$id" >/dev/null 2>&1 \
+    || fail "explicit --branch fm/<id> scaffold should exit 0"
+  with_default_flag="$tmp/data-with-default/$id/brief.md"
+
+  cmp -s "$without_flag" "$with_default_flag" \
+    || fail "omitting --branch produced different bytes than an explicit --branch matching the default"
+  pass "fm-brief.sh: omitting --branch is byte-for-byte identical to passing the literal default"
+}
+
+# --branch is meaningful only for a ship brief: refused on --scout and
+# --secondmate scaffolds, matching how --validate-now is refused there.
+test_branch_flag_is_refused_where_it_does_not_apply() {
+  local home out status label args expect
+  home="$TMP_ROOT/branch-refused-home"
+  mkdir -p "$home/data"
+  while IFS='|' read -r label args expect; do
+    [ -n "$label" ] || continue
+    # shellcheck disable=SC2086  # args is an intentional word-split arg list
+    out=$(FM_HOME="$home" "$ROOT/bin/fm-brief.sh" $args 2>&1)
+    status=$?
+    [ "$status" -ne 0 ] || fail "$label: expected a non-zero exit"
+    assert_contains "$out" "$expect" "$label: refusal did not explain why"
+  done <<'ROWS'
+branch on a scout brief|brief-branch-refused-g1 some-proj --scout --branch feat/x|--branch applies only to ship briefs
+branch on a secondmate charter|brief-branch-refused-g2 --secondmate --no-projects --branch feat/x|--branch applies only to ship briefs
+empty branch value|brief-branch-refused-g3 some-proj --mode no-mistakes --branch|--branch requires a value
+ROWS
+  pass "fm-brief.sh: --branch is refused on scout/secondmate scaffolds and rejects an empty value"
 }
 
 # A ship task's delivery mode is firstmate's per-task decision, so a missing or
@@ -796,6 +878,9 @@ test_script_parses
 test_no_heredoc_in_command_substitution
 test_help_includes_entire_header
 test_ship_modes_generate_clean_briefs
+test_branch_flag_overrides_ship_brief
+test_branch_flag_omission_is_byte_identical_to_explicit_default
+test_branch_flag_is_refused_where_it_does_not_apply
 test_ship_mode_is_required_and_closed_set
 test_ship_mode_is_explicit_not_registry
 test_delivery_flags_are_refused_where_they_do_not_apply

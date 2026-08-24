@@ -67,10 +67,15 @@ default_branch() {
 
 DEFAULT=$(default_branch) || { echo "error: cannot determine default branch for $PROJ; expected origin/HEAD, main, or master" >&2; exit 1; }
 
-BRANCH="fm/$ID"
+# branch= records the task's actual branch (bin/fm-spawn.sh's --branch override,
+# or fm/<id> by default); fall back to fm/<id> only for a task spawned before
+# that field existed.
+BRANCH=$(grep '^branch=' "$META" | tail -1 | cut -d= -f2- || true)
+[ -n "$BRANCH" ] || BRANCH="fm/$ID"
 if ! git -C "$WT" rev-parse --verify --quiet "refs/heads/$BRANCH" >/dev/null; then
-  BRANCH=$(git -C "$WT" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
-  [ -n "$BRANCH" ] || { echo "error: branch fm/$ID does not exist and worktree $WT is detached" >&2; exit 1; }
+  FALLBACK_BRANCH=$(git -C "$WT" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+  [ -n "$FALLBACK_BRANCH" ] || { echo "error: branch $BRANCH does not exist and worktree $WT is detached" >&2; exit 1; }
+  BRANCH=$FALLBACK_BRANCH
   git -C "$WT" rev-parse --verify --quiet "refs/heads/$BRANCH" >/dev/null || { echo "error: branch $BRANCH does not exist in $WT" >&2; exit 1; }
 fi
 

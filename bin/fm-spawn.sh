@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Spawn a direct report: a crewmate in a treehouse or Orca worktree, or a
 # secondmate in its isolated firstmate home.
-# Usage: fm-spawn.sh <task-id> <project-dir> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
+# Usage: fm-spawn.sh <task-id> <project-dir> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>] [--branch <name>]
 #        fm-spawn.sh <task-id> <project-dir> --scout [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
 #        fm-spawn.sh <task-id> [<firstmate-home>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>] --secondmate
 #   --mode and --yolo are this task's delivery contract, REQUIRED for every ship
@@ -16,6 +16,17 @@
 #   loud one-line deviation notice is printed and the spawn continues.
 #   no-mistakes-prod-only is a registry policy rather than a task mode and is
 #   refused as a flag value.
+#   --branch <name> records this ship task's branch as <name> in state/<id>.meta's
+#   branch= field instead of the default fm/<task-id>. Refused on --scout and
+#   --secondmate spawns, which record no branch. This flag does not create the
+#   branch or read bin/fm-brief.sh's own scaffolded brief; when firstmate wants a
+#   ship brief and its spawn to agree on a non-default branch, it passes the
+#   identical --branch value to both scripts itself (they do not coordinate).
+#   bin/fm-merge-local.sh and bin/fm-review-diff.sh read branch= from meta,
+#   falling back to fm/<task-id> only when an older task's meta predates this field.
+#   In batch dispatch, a shared --branch is refused outright when two or more
+#   id=repo pairs resolve to the same project (see Batch dispatch below):
+#   unlike --mode/--yolo, a branch name must be unique per project.
 #        fm-spawn.sh <task-id> --relaunch [--harness <name>] [--model <name>] [--effort <level>]
 #   --relaunch launches a replacement agent for an EXISTING task into that
 #   task's own recorded endpoint and worktree instead of creating either. It is
@@ -141,9 +152,12 @@
 # Batch dispatch: pass one or more `id=repo` pairs instead of a single <id> <project>, e.g.
 #     fm-spawn.sh fix-a-k3=projects/foo add-b-q7=projects/bar [--scout]
 #   Each pair re-execs this script in single-task mode, so the single path stays the only
-#   source of truth; shared --scout/--harness/--model/--effort/--backend/--mode/--yolo
+#   source of truth; shared --scout/--harness/--model/--effort/--backend/--mode/--yolo/--branch
 #   applies to every pair. A ship batch therefore carries one delivery contract, and each
 #   pair still checks it against its own brief; a batch spanning modes is two invocations.
+#   A shared --branch is refused up front (before any pair is dispatched) if two or more
+#   pairs resolve to the same project: a branch name must be unique per project, since git
+#   cannot check out the same branch in two worktrees of one repository at once.
 #   If config/crew-dispatch.json exists, shared --harness is required for crewmate
 #   and scout batches. The loop lives here, in bash, so callers never hand-write a
 #   multi-task shell loop (the tool shell is zsh, which does not word-split unquoted
@@ -274,6 +288,7 @@ EFFORT=
 BACKEND_ARG=
 MODE=
 YOLO=
+BRANCH=
 TRACEPARENT_ARG=
 HARNESS_SET=0
 MODEL_SET=0
@@ -281,6 +296,7 @@ EFFORT_SET=0
 BACKEND_SET=0
 MODE_SET=0
 YOLO_SET=0
+BRANCH_SET=0
 TRACEPARENT_SET=0
 RELAUNCH=0
 POS=()
@@ -297,6 +313,7 @@ for a in "$@"; do
       backend) BACKEND_ARG=$a; BACKEND_SET=1 ;;
       mode) MODE=$a; MODE_SET=1 ;;
       yolo) YOLO=$a; YOLO_SET=1 ;;
+      branch) BRANCH=$a; BRANCH_SET=1 ;;
       traceparent) TRACEPARENT_ARG=$a; TRACEPARENT_SET=1 ;;
       *) echo "error: internal parser state for --$want_value" >&2; exit 1 ;;
     esac
@@ -319,6 +336,8 @@ for a in "$@"; do
     --mode=*) MODE=${a#--mode=}; MODE_SET=1 ;;
     --yolo) want_value=yolo ;;
     --yolo=*) YOLO=${a#--yolo=}; YOLO_SET=1 ;;
+    --branch) want_value=branch ;;
+    --branch=*) BRANCH=${a#--branch=}; BRANCH_SET=1 ;;
     --traceparent) want_value=traceparent ;;
     --traceparent=*) TRACEPARENT_ARG=${a#--traceparent=}; TRACEPARENT_SET=1 ;;
     *) POS+=("$a") ;;
@@ -331,6 +350,7 @@ done
 [ "$BACKEND_SET" -eq 0 ] || [ -n "$BACKEND_ARG" ] || { echo "error: --backend requires a non-empty value" >&2; exit 1; }
 [ "$MODE_SET" -eq 0 ] || [ -n "$MODE" ] || { echo "error: --mode requires a non-empty value" >&2; exit 1; }
 [ "$YOLO_SET" -eq 0 ] || [ -n "$YOLO" ] || { echo "error: --yolo requires a non-empty value" >&2; exit 1; }
+[ "$BRANCH_SET" -eq 0 ] || [ -n "$BRANCH" ] || { echo "error: --branch requires a non-empty value" >&2; exit 1; }
 [ "$TRACEPARENT_SET" -eq 0 ] || [ -n "$TRACEPARENT_ARG" ] || { echo "error: --traceparent requires a non-empty value" >&2; exit 1; }
 # A parent-delivered carrier replaces this home's own resolution, so it is
 # refused unless it is a secondmate spawn carrying a strictly valid W3C value.
@@ -359,6 +379,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
   [ "$KIND_SET" -eq 0 ] || { echo "error: --relaunch reuses the task's recorded kind; --scout/--secondmate cannot override it" >&2; exit 1; }
   [ "$MODE_SET" -eq 0 ] || { echo "error: --relaunch reuses the task's recorded delivery mode; --mode cannot override it" >&2; exit 1; }
   [ "$YOLO_SET" -eq 0 ] || { echo "error: --relaunch reuses the task's recorded yolo posture; --yolo cannot override it" >&2; exit 1; }
+  [ "$BRANCH_SET" -eq 0 ] || { echo "error: --relaunch reuses the task's recorded branch; --branch cannot override it" >&2; exit 1; }
 else
   # Delivery contract (AGENTS.md section 7). A ship task's mode and yolo are
   # firstmate's per-task decision, so they are required and closed-set validated
@@ -391,6 +412,10 @@ else
     }
     [ "$YOLO_SET" -eq 0 ] || {
       echo "error: --yolo applies only to ship spawns; a scout delivers a report and a secondmate records its own fixed posture" >&2
+      exit 1
+    }
+    [ "$BRANCH_SET" -eq 0 ] || {
+      echo "error: --branch applies only to ship spawns; a scout has no branch and a secondmate records its own fixed posture" >&2
       exit 1
     }
   fi
@@ -868,6 +893,31 @@ if [ "${#POS[@]}" -gt 0 ] && [ "${POS[0]}" != "$idpart" ] && case "$idpart" in *
   # spanning several modes is two invocations rather than a silent mixed dispatch.
   [ "$MODE_SET" -eq 0 ] || shared_args+=(--mode "$MODE")
   [ "$YOLO_SET" -eq 0 ] || shared_args+=(--yolo "$YOLO")
+  [ "$BRANCH_SET" -eq 0 ] || shared_args+=(--branch "$BRANCH")
+  # A shared --branch is a shared VALUE, not a shared per-pair identity like
+  # --mode/--yolo: git refuses the same branch checked out in two worktrees of
+  # one repository at once, so two pairs targeting the same project with the
+  # same --branch would have their second crewmate fail its first action.
+  # Refuse the whole batch up front rather than let some pairs spawn and
+  # others fail partway through.
+  if [ "$BRANCH_SET" -eq 1 ]; then
+    seen_repos=()
+    for pair in "${POS[@]}"; do
+      case "$pair" in *=*) : ;; *) continue ;; esac
+      repo=${pair#*=}
+      case "$repo" in
+        projects/*) repo="$PROJECTS/${repo#projects/}" ;;
+      esac
+      repo_abs=$(cd "$repo" 2>/dev/null && pwd -P) || repo_abs=$repo
+      for seen in "${seen_repos[@]+"${seen_repos[@]}"}"; do
+        if [ "$seen" = "$repo_abs" ]; then
+          echo "error: batch dispatch with a shared --branch cannot target the same project ($repo_abs) twice; each crewmate would try to check out branch '$BRANCH' in its own worktree of that repo, and git refuses the same branch checked out in two worktrees at once. Spawn that project's tasks separately, each with its own --branch." >&2
+          exit 1
+        fi
+      done
+      seen_repos+=("$repo_abs")
+    done
+  fi
   for pair in "${POS[@]}"; do
     case "$pair" in
       *=*) : ;;
@@ -1012,6 +1062,7 @@ if [ "$RELAUNCH" -eq 1 ]; then
   [ -n "$KIND" ] || KIND=ship
   MODE=$(fm_meta_get "$RELAUNCH_META" mode)
   YOLO=$(fm_meta_get "$RELAUNCH_META" yolo)
+  BRANCH=$(fm_meta_get "$RELAUNCH_META" branch)
   RELAUNCH_WT=$(fm_meta_get "$RELAUNCH_META" worktree)
   [ -n "$RELAUNCH_WT" ] && [ -d "$RELAUNCH_WT" ] || {
     echo "error: task $ID's recorded worktree '${RELAUNCH_WT:-none}' is missing; refusing to relaunch without the local copy its work lives in" >&2
@@ -2583,10 +2634,18 @@ fi
 if [ "$KIND" = secondmate ]; then
   MODE=secondmate
   YOLO=off
+  BRANCH=
   : "${SECONDMATE_PROJECTS:=}"
 elif [ "$KIND" = scout ]; then
   MODE=
   YOLO=
+  BRANCH=
+else
+  # Single computation point (one-owner rule): a fresh ship spawn without
+  # --branch defaults to fm/<id>, matching fm-brief.sh's own default; a
+  # relaunch reuses the branch already recorded in meta above, only falling
+  # back here for a task spawned before branch= existed.
+  [ -n "$BRANCH" ] || BRANCH="fm/$ID"
 fi
 
 # Resolve the optional default-off W3C trace context (bin/fm-trace-context-lib.sh,
@@ -2632,7 +2691,7 @@ fi
 preserve_relaunch_meta() {
   awk -F= '
     BEGIN {
-      split("window endpoint_task_id worktree project harness kind mode yolo tasktmp model effort busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id zellij_session zellij_tab_id zellij_pane_id orca_worktree_id terminal cmux_workspace_id cmux_surface_id home projects control_relaunch_tx", keys, " ")
+      split("window endpoint_task_id worktree project harness kind mode yolo branch tasktmp model effort busy_gen spawn_gen traceparent backend herdr_session herdr_workspace_id herdr_tab_id herdr_pane_id zellij_session zellij_tab_id zellij_pane_id orca_worktree_id terminal cmux_workspace_id cmux_surface_id home projects control_relaunch_tx", keys, " ")
       for (i in keys) owned[keys[i]] = 1
     }
     !($1 in owned)
@@ -2647,6 +2706,7 @@ preserve_relaunch_meta() {
   echo "kind=$KIND"
   [ -z "$MODE" ] || echo "mode=$MODE"
   [ -z "$YOLO" ] || echo "yolo=$YOLO"
+  [ -z "$BRANCH" ] || echo "branch=$BRANCH"
   echo "tasktmp=$TASK_TMP"
   echo "model=${MODEL:-default}"
   echo "effort=${EFFORT:-default}"
