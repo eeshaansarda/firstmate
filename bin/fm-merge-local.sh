@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Perform the approved local merge for a local-only ship task: fast-forward the
-# project's default branch to the crewmate's fm/<id> branch.
+# project's default branch to the crewmate's task branch (state/<id>.meta's
+# branch= field, defaulting to fm/<id> when that field is absent).
 #
 # This is firstmate's merge gate-action (the captain's merge authority applied
 # locally instead of via a GitHub PR). It is the one sanctioned exception to hard

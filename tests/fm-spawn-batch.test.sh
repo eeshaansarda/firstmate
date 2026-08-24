@@ -141,8 +141,34 @@ test_scout_batch_refuses_delivery_flags() {
   pass "scout batch refuses ship delivery flags instead of ignoring them"
 }
 
+# A shared --branch across id=repo pairs is a per-project identity, not a
+# uniform delivery flag like --mode/--yolo: git refuses the same branch
+# checked out in two worktrees of one repo, so the whole batch must be refused
+# up front rather than letting the first pair dispatch before the collision is
+# detected.
+test_batch_shared_branch_collision() {
+  local out status
+  out=$(run_ship_spawn nope-branch-dup-a-z13=projects/dupe-proj nope-branch-dup-b-z14=projects/dupe-proj --branch fix/shared)
+  status=$?
+  [ "$status" -ne 0 ] || fail "a shared --branch across pairs targeting the same project should exit non-zero"
+  printf '%s\n' "$out" | grep -F 'batch dispatch with a shared --branch cannot target the same project' >/dev/null \
+    || fail "batch refusal did not name the branch/project collision"
+  printf '%s\n' "$out" | grep -F 'batch: FAILED to spawn' >/dev/null \
+    && fail "batch dispatched a pair before detecting the shared-branch collision"
+
+  out=$(run_ship_spawn nope-branch-ok-a-z15=projects/proj-a nope-branch-ok-b-z16=projects/proj-b --branch fix/shared)
+  status=$?
+  [ "$status" -ne 0 ] || fail "batch with missing briefs should still exit non-zero"
+  printf '%s\n' "$out" | grep -F 'batch: FAILED to spawn nope-branch-ok-a-z15 (projects/proj-a)' >/dev/null \
+    || fail "distinct projects sharing --branch should still both dispatch"
+  printf '%s\n' "$out" | grep -F 'batch: FAILED to spawn nope-branch-ok-b-z16 (projects/proj-b)' >/dev/null \
+    || fail "distinct projects sharing --branch should still both dispatch"
+  pass "batch dispatch refuses a shared --branch across pairs targeting the same project"
+}
+
 test_batch_dispatches_every_pair
 test_batch_mode_boundaries
 test_batch_requires_the_shared_delivery_contract
 test_scout_batch_refuses_delivery_flags
+test_batch_shared_branch_collision
 test_projects_path_scoping

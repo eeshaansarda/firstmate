@@ -24,6 +24,9 @@
 #   identical --branch value to both scripts itself (they do not coordinate).
 #   bin/fm-merge-local.sh and bin/fm-review-diff.sh read branch= from meta,
 #   falling back to fm/<task-id> only when an older task's meta predates this field.
+#   In batch dispatch, a shared --branch is refused outright when two or more
+#   id=repo pairs resolve to the same project (see Batch dispatch below):
+#   unlike --mode/--yolo, a branch name must be unique per project.
 #        fm-spawn.sh <task-id> --relaunch [--harness <name>] [--model <name>] [--effort <level>]
 #   --relaunch launches a replacement agent for an EXISTING task into that
 #   task's own recorded endpoint and worktree instead of creating either. It is
@@ -152,6 +155,9 @@
 #   source of truth; shared --scout/--harness/--model/--effort/--backend/--mode/--yolo/--branch
 #   applies to every pair. A ship batch therefore carries one delivery contract, and each
 #   pair still checks it against its own brief; a batch spanning modes is two invocations.
+#   A shared --branch is refused up front (before any pair is dispatched) if two or more
+#   pairs resolve to the same project: a branch name must be unique per project, since git
+#   cannot check out the same branch in two worktrees of one repository at once.
 #   If config/crew-dispatch.json exists, shared --harness is required for crewmate
 #   and scout batches. The loop lives here, in bash, so callers never hand-write a
 #   multi-task shell loop (the tool shell is zsh, which does not word-split unquoted
@@ -888,6 +894,30 @@ if [ "${#POS[@]}" -gt 0 ] && [ "${POS[0]}" != "$idpart" ] && case "$idpart" in *
   [ "$MODE_SET" -eq 0 ] || shared_args+=(--mode "$MODE")
   [ "$YOLO_SET" -eq 0 ] || shared_args+=(--yolo "$YOLO")
   [ "$BRANCH_SET" -eq 0 ] || shared_args+=(--branch "$BRANCH")
+  # A shared --branch is a shared VALUE, not a shared per-pair identity like
+  # --mode/--yolo: git refuses the same branch checked out in two worktrees of
+  # one repository at once, so two pairs targeting the same project with the
+  # same --branch would have their second crewmate fail its first action.
+  # Refuse the whole batch up front rather than let some pairs spawn and
+  # others fail partway through.
+  if [ "$BRANCH_SET" -eq 1 ]; then
+    seen_repos=()
+    for pair in "${POS[@]}"; do
+      case "$pair" in *=*) : ;; *) continue ;; esac
+      repo=${pair#*=}
+      case "$repo" in
+        projects/*) repo="$PROJECTS/${repo#projects/}" ;;
+      esac
+      repo_abs=$(cd "$repo" 2>/dev/null && pwd -P) || repo_abs=$repo
+      for seen in "${seen_repos[@]+"${seen_repos[@]}"}"; do
+        if [ "$seen" = "$repo_abs" ]; then
+          echo "error: batch dispatch with a shared --branch cannot target the same project ($repo_abs) twice; each crewmate would try to check out branch '$BRANCH' in its own worktree of that repo, and git refuses the same branch checked out in two worktrees at once. Spawn that project's tasks separately, each with its own --branch." >&2
+          exit 1
+        fi
+      done
+      seen_repos+=("$repo_abs")
+    done
+  fi
   for pair in "${POS[@]}"; do
     case "$pair" in
       *=*) : ;;
