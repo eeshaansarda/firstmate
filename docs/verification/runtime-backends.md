@@ -1967,6 +1967,10 @@ ok - real herdr (herdr 0.8.0): handle_push_transition read the real dialog text,
 ok - real herdr (herdr 0.8.0): handle_push_transition never sends a keystroke when 'Ask your admin' is selected, and the ordinary wake still fires
 ```
 
+This 2026-08-08 Herdr 0.8.0 live evidence predates the switch to visible-viewport capture (`--source visible`) for the dialog match.
+The portable regression `test_autoresolve_never_sends_a_key_on_stale_scrollback_dialog` in `tests/fm-backend-herdr.test.sh` covers that change.
+Rerun the live-guard command above to refresh this record.
+
 The portable regression (no real herdr) is `tests/fm-backend-herdr.test.sh`'s `test_usage_limit_dialog_*`, `test_autoresolve_*`, and `test_handle_push_transition_*` cases, including the divergence assertion that an admin-selected or otherwise non-matching capture still fires the ordinary wake unchanged.
 
 Not verified live: whether this same dialog can render under tmux, zellij, orca, or cmux. Those backends implement no native blocked-transition push at all (`fm_backend_has_push` is herdr-only), so there is no equivalent classification decision point to intercept for them today; any occurrence would fall through to the pre-existing, unmodified generic stale/wedge-timer path exactly like any other wedge. This is a static-code-review finding, not a live reproduction on those backends.
