@@ -556,7 +556,7 @@ test_deferred_validation_is_the_default() {
   brief="$home/data/$id/brief.md"
   grep -qx "Delivery contract: mode=no-mistakes validate=deferred" "$brief" \
     || fail "default no-mistakes brief did not record validate=deferred on the delivery contract line"
-  assert_grep "report each meaningful chunk as a nonterminal \`working [at=<epoch>]:\` checkpoint under rule 4 above" "$brief" \
+  assert_grep "report each meaningful chunk as a nonterminal \`working [at=<epoch>]:\` checkpoint using the brief's status-reporting rule" "$brief" \
     "deferred brief lost the nonterminal working: checkpoint instruction"
   assert_grep "never report a terminal \`done:\` for your first working version" "$brief" \
     "deferred brief lost the no-terminal-done-on-first-version instruction"

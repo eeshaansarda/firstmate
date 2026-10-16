@@ -4026,8 +4026,9 @@ fm_backend_herdr_usage_limit_dialog_selects_stop() {  # <text>
   return 0
 }
 
-# fm_backend_herdr_autoresolve_usage_limit_dialog: reads <target>'s current
-# pane text and, on an unambiguous match
+# fm_backend_herdr_autoresolve_usage_limit_dialog: reads <target>'s visible
+# viewport only (never recent scrollback, where a stale dialog frame can sit
+# above a different live prompt) and, on an unambiguous match
 # (fm_backend_herdr_usage_limit_dialog_selects_stop), sends exactly one Enter
 # keypress - the ONLY key this function is ever allowed to send, and only
 # because that keypress selects "Stop and wait for limit to reset", NEVER
@@ -4040,7 +4041,7 @@ fm_backend_herdr_usage_limit_dialog_selects_stop() {  # <text>
 # matches on a later call (the agent has moved on).
 fm_backend_herdr_autoresolve_usage_limit_dialog() {  # <target>
   local target=${1:-} text
-  text=$(fm_backend_herdr_capture "$target" 100) || return 1
+  text=$(fm_backend_herdr_visible_capture "$target") || return 1
   fm_backend_herdr_usage_limit_dialog_selects_stop "$text" || return 1
   fm_backend_herdr_send_key "$target" Enter
 }

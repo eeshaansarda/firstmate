@@ -399,7 +399,7 @@ EOF
     return 0
   fi
   cat <<EOF
-Implement, commit, and keep iterating on further captain feedback: report each meaningful chunk as a nonterminal \`working [at=<epoch>]:\` checkpoint under rule 4 above, and never report a terminal \`done:\` for your first working version.
+Implement, commit, and keep iterating on further captain feedback: report each meaningful chunk as a nonterminal \`working [at=<epoch>]:\` checkpoint using the brief's status-reporting rule, and never report a terminal \`done:\` for your first working version.
 ${push_line}Do not start /no-mistakes on your own initiative no matter how complete the work feels; start it only on an explicit firstmate steer, never something you infer from the task going quiet.
 Once firstmate does steer you into /no-mistakes, the following mechanics apply.
 EOF
