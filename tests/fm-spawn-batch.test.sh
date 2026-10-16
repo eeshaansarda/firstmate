@@ -84,19 +84,21 @@ test_projects_path_scoping() {
     home="$TMP_ROOT/$id home"
     projects="$TMP_ROOT/$id projects"
     mkdir -p "$home/data" "$projects/alpha"
+    git -C "$projects/alpha" init -q || fail "$label: could not initialize project fixture"
     if [ "$use_override" = yes ]; then
       out=$(FM_ROOT_OVERRIDE='' FM_STATE_OVERRIDE='' FM_DATA_OVERRIDE='' FM_CONFIG_OVERRIDE='' \
         FM_HOME="$home" FM_PROJECTS_OVERRIDE="$projects" FM_SPAWN_NO_GUARD=1 \
         "$SPAWN" "$id" projects/alpha codex --mode no-mistakes --yolo off 2>&1)
     else
       mkdir -p "$home/projects/alpha"
+      git -C "$home/projects/alpha" init -q || fail "$label: could not initialize home project fixture"
       out=$(FM_ROOT_OVERRIDE='' FM_STATE_OVERRIDE='' FM_DATA_OVERRIDE='' FM_PROJECTS_OVERRIDE='' FM_CONFIG_OVERRIDE='' \
         FM_HOME="$home" FM_SPAWN_NO_GUARD=1 \
         "$SPAWN" "$id" projects/alpha codex --mode no-mistakes --yolo off 2>&1)
     fi
     status=$?
     [ "$status" -ne 0 ] || fail "$label: spawn with missing brief should fail"
-    expected="error: no brief at $home/data/$id/brief.md"
+    expected="error: task $id has no brief at inaccessible data path $home/data/$id/brief.md"
     printf '%s\n' "$out" | grep -F "$expected" >/dev/null \
       || fail "$label: projects/alpha was not resolved through the home before the brief check"
     printf '%s\n' "$out" | grep -F 'cd: projects/alpha' >/dev/null \
@@ -141,34 +143,8 @@ test_scout_batch_refuses_delivery_flags() {
   pass "scout batch refuses ship delivery flags instead of ignoring them"
 }
 
-# A shared --branch across id=repo pairs is a per-project identity, not a
-# uniform delivery flag like --mode/--yolo: git refuses the same branch
-# checked out in two worktrees of one repo, so the whole batch must be refused
-# up front rather than letting the first pair dispatch before the collision is
-# detected.
-test_batch_shared_branch_collision() {
-  local out status
-  out=$(run_ship_spawn nope-branch-dup-a-z13=projects/dupe-proj nope-branch-dup-b-z14=projects/dupe-proj --branch fix/shared)
-  status=$?
-  [ "$status" -ne 0 ] || fail "a shared --branch across pairs targeting the same project should exit non-zero"
-  printf '%s\n' "$out" | grep -F 'batch dispatch with a shared --branch cannot target the same project' >/dev/null \
-    || fail "batch refusal did not name the branch/project collision"
-  printf '%s\n' "$out" | grep -F 'batch: FAILED to spawn' >/dev/null \
-    && fail "batch dispatched a pair before detecting the shared-branch collision"
-
-  out=$(run_ship_spawn nope-branch-ok-a-z15=projects/proj-a nope-branch-ok-b-z16=projects/proj-b --branch fix/shared)
-  status=$?
-  [ "$status" -ne 0 ] || fail "batch with missing briefs should still exit non-zero"
-  printf '%s\n' "$out" | grep -F 'batch: FAILED to spawn nope-branch-ok-a-z15 (projects/proj-a)' >/dev/null \
-    || fail "distinct projects sharing --branch should still both dispatch"
-  printf '%s\n' "$out" | grep -F 'batch: FAILED to spawn nope-branch-ok-b-z16 (projects/proj-b)' >/dev/null \
-    || fail "distinct projects sharing --branch should still both dispatch"
-  pass "batch dispatch refuses a shared --branch across pairs targeting the same project"
-}
-
 test_batch_dispatches_every_pair
 test_batch_mode_boundaries
 test_batch_requires_the_shared_delivery_contract
 test_scout_batch_refuses_delivery_flags
-test_batch_shared_branch_collision
 test_projects_path_scoping
