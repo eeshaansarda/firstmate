@@ -30,18 +30,16 @@
 # `herdr server stop`. Every lifecycle op goes through bin/fm-herdr-lab.sh.
 set -u
 
+# shellcheck source=tests/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 fail() { printf 'not ok - %s\n' "$1" >&2; cleanup_all; exit 1; }
 pass() { printf 'ok - %s\n' "$1"; }
 
-if [ "${FM_HERDR_USAGE_LIMIT_AUTORESOLVE_E2E:-0}" != 1 ]; then
-  echo "skip: set FM_HERDR_USAGE_LIMIT_AUTORESOLVE_E2E=1 to run the real-herdr usage-limit dialog auto-resolve guard"
-  exit 0
-fi
-command -v herdr >/dev/null 2>&1 || { echo "skip: herdr not found"; exit 0; }
-command -v jq >/dev/null 2>&1 || { echo "skip: jq not found (required by the herdr adapter)"; exit 0; }
-command -v python3 >/dev/null 2>&1 || { echo "skip: python3 not found (required by the event subscriber)"; exit 0; }
+# jq is required by the herdr adapter, python3 by the event subscriber.
+fm_live_gate opt-in FM_HERDR_USAGE_LIMIT_AUTORESOLVE_E2E herdr jq python3
 
 # shellcheck source=tests/herdr-test-safety.sh
 . "$ROOT/tests/herdr-test-safety.sh"
